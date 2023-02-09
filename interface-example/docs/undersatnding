@@ -1,0 +1,29 @@
+1.  What is an interface?
+    An interface is a custom type that is used to specify a set of one or more method signatures.
+    An interface is abstract, so you are not allowed to create an instance of the interface.
+    An interface is an abstract concept that enables polymorphism in Go
+    The go language interfaces are implemented implicitly. And it does not contain any specific keyword to implement an interface just like other languages.
+    To implement an interface in Go, you need to implement all the methods declared in the interface.
+    A type implements an interface, if it provides function definitions for ALL methods of the interface.
+
+
+2.  How to create an interface?
+    In Go language, you can create an interface using the following syntax:
+
+type interface_name interface{
+    // Method signatures
+}
+
+For Example:
+
+// Creating an interface
+type myinterface interface{
+    // Methods
+    fun1() int
+    fun2() float64
+}
+
+// https://www.youtube.com/watch?v=KXXdYXla7Tc
+// https://www.youtube.com/watch?v=fzOBu5xDhdY
+// https://github.com/striversity/glft
+// https://blog.knoldus.com/how-to-use-interfaces-in-golang/
