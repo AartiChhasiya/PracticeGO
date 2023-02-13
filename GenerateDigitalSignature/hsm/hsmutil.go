@@ -11,7 +11,7 @@ import (
 	"net"
 )
 
-func GenerateSignature() {
+func GenerateSignatureUsingPrivateKey() {
 	message := []byte("Hello World!")
 	hash := sha256.Sum256(message)
 
