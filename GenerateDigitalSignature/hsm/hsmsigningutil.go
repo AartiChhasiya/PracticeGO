@@ -1,7 +1,8 @@
 package hsmutil
 
 import (
-	"errors"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -16,107 +17,172 @@ const (
 	SHA256 int = 4
 )
 
+const RSAS_MAX_LENGTH int = 4096 //Max length supported by HSM function
+
 type HSMSigningResult struct {
 	IsSuccess    bool
 	IsContinue   bool
 	SignedData   string
 	ErrorMessage string
+	CHCommand    string
 }
 
 func GenerateSignature() {
+	// inputMessage := `{"paymentReturnInstruction": {"TransactionId": "ae07582a-88f1-4f5f-8d1a-a564ae933e68","ReasonForReturn": ""}}`
+	// inputMessage := `{"MachineName":"CON-IND-09","UserName":"sapan.patibandha","Timestamp":"2018-10-17T11:12:05.4212206+05:30"}`
+
 	inputMessage := "Hello World!"
-	// message := []byte(inputMessage)
-	// hash := sha256.Sum256(message)
+	hashOfInputData := hex.EncodeToString([]byte(inputMessage))
+	fmt.Println("SignData is", hashOfInputData)
 
 	var signKeyIndex int16 = 23
 	connectClient()
 
-	signature, _ := generateSign(inputMessage, signKeyIndex, SHA256)
+	HSMSignature := generateSign(hashOfInputData, signKeyIndex, SHA256)
+	fmt.Println("HSMSignature is:", HSMSignature)
+
+	body, err := hex.DecodeString(HSMSignature)
+	if err != nil {
+		panic(fmt.Sprintf("Unable to generate signature - %s", err.Error()))
+	}
+
+	//signature := base64.RawStdEncoding.EncodeToString(body)
+	signature := base64.StdEncoding.EncodeToString(body)
 	fmt.Println("Digital Signature is: ", signature)
 }
 
-func generateSign(hexString string, signingKeyIndex int16, algorithm int) (string, error) {
-	var result string
-	var hSMSigningResult HSMSigningResult
-	hSMSigningResult.IsSuccess = false
+func generateSign(hexString string, signingKeyIndex int16, algorithm int) string {
+	signedData := ""
+	chCommand := ""
 
-	list := split(hexString, 4096)
-	for i := 0; i < len(list); i++ {
-		hSMSigningResult = GetSignData(list[i], signingKeyIndex, i != len(list)-1, algorithm)
-		if hSMSigningResult.IsSuccess {
-			if !hSMSigningResult.IsContinue {
-				result = hSMSigningResult.SignedData
+	objResult := HSMSigningResult{}
+	objResult.IsSuccess = false
+	hexChunkList := split(hexString, RSAS_MAX_LENGTH)
+
+	for i := 0; i < len(hexChunkList); i++ {
+
+		var isContinue bool = false
+		if len(hexChunkList)-1 > 0 {
+			isContinue = true
+		}
+
+		objResult = getSignData(
+			hexChunkList[i],
+			signingKeyIndex,
+			isContinue,
+			algorithm,
+			func() string {
+				if chCommand != "" {
+					return chCommand
+				}
+				return ""
+			}(),
+		)
+
+		chCommand = objResult.CHCommand
+
+		if objResult.IsSuccess {
+			if !objResult.IsContinue {
+				signedData = objResult.SignedData
 				break
 			}
-			continue
+		} else {
+			panic(fmt.Sprintf("Unable to sign data - %s", objResult.ErrorMessage))
 		}
-		return "", errors.New("Unable to sign data - " + hSMSigningResult.ErrorMessage)
 	}
 
-	return result, nil
+	return signedData
 }
 
-func split(hexString string, chunkSize int) []string {
-	var chunks []string
-	runes := []rune(hexString)
-	for i := 0; i < len(runes); i += chunkSize {
-		end := i + chunkSize
-		if end > len(runes) {
-			end = len(runes)
-		}
-		chunks = append(chunks, string(runes[i:end]))
+func split(str string, chunkSize int) []string {
+	var listArray []string
+	remaining := 0
+
+	for i := 0; i < len(str)/chunkSize; i++ {
+		listArray = append(listArray, str[i*chunkSize:(i+1)*chunkSize])
 	}
-	return chunks
+
+	if remaining*chunkSize < len(str) {
+		listArray = append(listArray, str[remaining*chunkSize:])
+	}
+
+	return listArray
 }
 
-func GetSignData(hexData string, privateKeyIndex int16, isContinue bool, algorithm int) HSMSigningResult {
-	result := HSMSigningResult{}
-	result.IsSuccess = false
-	format := "[AORSAS;RC%d;RF%s;RG%d;BN%s;KY1;ZA1;]"
-	request := fmt.Sprintf(format, privateKeyIndex, hexData, algorithm, map[bool]string{true: "1", false: "0"}[isContinue])
-	endChar := "]"
+func getSignData(hexData string, privateKeyIndex int16, isContinue bool, algorithm int, sChcommand string) HSMSigningResult {
+	var objResult HSMSigningResult
+	objResult.IsSuccess = false
 
-	text := executeExcrypt(request, endChar, !isContinue)
+	var commandParam string
+	var cmd string
 
-	text = text[1 : len(text)-1]
-	array := strings.Split(text, ";")
-	errorMessage := ""
-	for i := 0; i < len(array)-1; i++ {
-		switch array[i][:2] {
+	if strings.TrimSpace(sChcommand) == "" {
+		commandParam = "[AORSAS;RC%d;RF%s;RG%d;BN%s;KY1;ZA1;]" // *KY1(BER encoding of the HASH); *ZA1(Padding (Default))
+		cmd = fmt.Sprintf(commandParam,
+			privateKeyIndex, // %d private key index
+			hexData,         // %s Data used to generate the signature
+			algorithm,       // %d Hash algorithm
+			map[bool]string{true: "1", false: "0"}[isContinue]) // %s Send Data in chunk or not
+	} else {
+		// This section of command need to build when we have to pass CH parameter.
+		commandParam = "[AORSAS;CH%s;RC%d;RF%s;RG%d;BN%s;KY1;ZA1;]" // *KY1(BER encoding of the HASH); *ZA1(Padding (Default))
+		cmd = fmt.Sprintf(commandParam,
+			sChcommand,      // %s CH command for split data
+			privateKeyIndex, // %d private key index
+			hexData,         // %s Data used to generate the signature
+			algorithm,       // %d Hash algorithm
+			map[bool]string{true: "1", false: "0"}[isContinue]) // %s Send Data in chunk or not
+	}
+
+	var endChar string = "]"
+	response := executeExcrypt(cmd, endChar, !isContinue)
+	functionID := ""
+
+	response = response[1 : len(response)-1]
+	resultArray := strings.Split(response, ";")
+
+	var message string
+
+	for i := 0; i < len(resultArray)-1; i++ {
+		str := resultArray[i][0:2]
+		data := resultArray[i][2:]
+		switch str {
 		case "AO":
-			text = strings.ToUpper(array[i][2:])
+			functionID = strings.ToUpper(data)
 		case "BB":
-			errorMessage = array[i][2:]
+			message = data
 		case "BN":
-			if strings.ToUpper(array[i][2:]) == "CONTINUE" {
-				result.IsSuccess = true
-				result.IsContinue = true
+			if strings.ToUpper(data) == "CONTINUE" {
+				objResult.IsSuccess = true
+				objResult.IsContinue = true
 			} else {
-				result.IsContinue = false
+				objResult.IsContinue = false
 			}
 		case "RH":
-			result.IsSuccess = true
-			result.SignedData = array[i][2:]
+			objResult.IsSuccess = true
+			objResult.SignedData = data
+		case "CH":
+			objResult.CHCommand = data
 		}
 	}
 
-	if text == "ERRO" {
-		result.IsSuccess = false
-		result.ErrorMessage = errorMessage
-	} else if text != "RSAS" {
-		result.IsSuccess = false
-		result.ErrorMessage = errorMessage
+	if functionID == "ERRO" {
+		objResult.IsSuccess = false
+		objResult.ErrorMessage = message
+	} else if functionID != "RSAS" {
+		objResult.IsSuccess = false
+		objResult.ErrorMessage = message
 	}
 
-	return result
+	return objResult
 }
 
 func connectClient() {
-	var hsmPrimaryIP int64 = 3232272392
-	var hsmSecondaryIP int64 = 3232272392
+	var hsmPrimaryIP uint32 = 3232272392
+	var hsmSecondaryIP uint32 = 3232272392
 	var hsmPort int = 9000
 
-	fmt.Println("IP address is:", hsmPrimaryIP)
+	// fmt.Println("IP address is:", hsmPrimaryIP)
 
 	hsmClient.NewHSMConnectWithPort(hsmPrimaryIP, hsmSecondaryIP, hsmPort)
 
@@ -124,7 +190,8 @@ func connectClient() {
 	err := hsmClient.Connect()
 
 	if err != nil {
-		fmt.Errorf("Unable to connect to Primary HSM")
+		panic(fmt.Sprintf("Unable to connect to Primary HSM - %s", err.Error()))
+		// fmt.Errorf("unable to connect to Primary HSM, %w", err)
 	}
 }
 
@@ -133,13 +200,14 @@ func executeExcrypt(request, endChar string, endConnection bool) string {
 	if !hsmClient.IsConnected() {
 		connectClient()
 		if !hsmClient.IsConnected() {
-			return fmt.Sprintf("Unable to Connect Primary %s and Secondary HSM %s", hsmClient.PrimaryHSMIP(), hsmClient.SecondaryHSMIP())
+			return fmt.Sprintf("unable to Connect Primary %s and Secondary HSM %s", hsmClient.PrimaryHSMIP(), hsmClient.SecondaryHSMIP())
 		}
 	}
 
 	result, err := hsmClient.PostRequest(request, endChar)
 	if err != nil {
-		fmt.Errorf("Unable to post request to HSM, %w", err)
+		panic(fmt.Sprintf("Unable to post request to HSM - %s", err.Error()))
+		// fmt.Errorf("unable to post request to HSM, %w", err)
 	}
 
 	if endConnection {

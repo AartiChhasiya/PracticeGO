@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 )
 
@@ -29,37 +28,29 @@ func (h *HSMConnect) IsConnected() bool {
 	return h.connected
 }
 
-// func (primaryHSMLongIP, secondaryHSMLongIP int64) NewHSMConnect() *HSMConnect {
-// 	h := &HSMConnect{
-// 		primaryHSMIP:   net.ParseIP(strconv.FormatInt(primaryHSMLongIP, 10)),
-// 		secondaryHSMIP: net.ParseIP(strconv.FormatInt(secondaryHSMLongIP, 10)),
-// 		tcpPort:        9000,
-// 	}
-
-// 	return h
-// }
-
-func (h *HSMConnect) NewHSMConnectWithPort(primaryHSMLongIP int64, secondaryHSMLongIP int64, port int) {
-	h.primaryHSMIP = net.ParseIP(strconv.FormatInt(primaryHSMLongIP, 10))
-	h.secondaryHSMIP = net.ParseIP(strconv.FormatInt(secondaryHSMLongIP, 10))
+func (h *HSMConnect) NewHSMConnectWithPort(primaryHSMLongIP uint32, secondaryHSMLongIP uint32, port int) {
+	h.primaryHSMIP = net.ParseIP(Uint32ToIPv4(primaryHSMLongIP))
+	h.secondaryHSMIP = net.ParseIP(Uint32ToIPv4(secondaryHSMLongIP))
 	h.tcpPort = port
+
+	fmt.Printf("Primary IP is: %s Secondary IP is: %s Port is: %d \n", h.primaryHSMIP, h.secondaryHSMIP, h.tcpPort)
 }
 
 func (h *HSMConnect) Connect() error {
 	if h.primaryHSMIP == nil {
-		return fmt.Errorf("Primary HSM IP must be specified")
+		return fmt.Errorf("primary HSM IP must be specified, %w", nil)
 	}
 
 	var err error
 	h.client, err = net.DialTCP("tcp", nil, &net.TCPAddr{IP: h.primaryHSMIP, Port: h.tcpPort})
 	if err != nil {
 		if h.secondaryHSMIP == nil {
-			return fmt.Errorf("Unable to connect to Primary HSM")
+			return fmt.Errorf("unable to connect to Primary HSM, %w", err)
 		}
 
 		h.client, err = net.DialTCP("tcp", nil, &net.TCPAddr{IP: h.secondaryHSMIP, Port: h.tcpPort})
 		if err != nil {
-			return fmt.Errorf("Unable to connect to Primary and secondary HSM")
+			return fmt.Errorf("unable to connect to Primary and secondary HSM, %w", err)
 		}
 	}
 	h.clientStream = h.client
