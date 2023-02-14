@@ -1,6 +1,7 @@
 package hsmutil
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -96,4 +97,16 @@ func (h *HSMConnect) PostRequest(request, requestEndChar string) (string, error)
 		return resultBuilder.String(), nil
 	}
 	return "", errors.New("HSM is not connected")
+}
+
+func Uint32ToIPv4(ip uint32) string {
+	// Create a 4-byte array from the uint32 value
+	ipBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(ipBytes, ip)
+
+	// Convert the 4-byte array to a net.IP
+	ipAddr := net.IPv4(ipBytes[0], ipBytes[1], ipBytes[2], ipBytes[3])
+
+	// Return the string representation of the IP address
+	return ipAddr.String()
 }
