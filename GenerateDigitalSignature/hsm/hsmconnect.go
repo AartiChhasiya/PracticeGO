@@ -97,32 +97,3 @@ func (h *HSMConnect) PostRequest(request, requestEndChar string) (string, error)
 	}
 	return "", errors.New("HSM is not connected")
 }
-
-// func (obj *Signing) PostRequest(request, requestEndChar string) (string, error) {
-// 	var strBuilder strings.Builder
-// 	if obj.client != nil && obj.client.Connected() {
-// 		bytes := []byte(request)
-// 		_, err := obj.clientStream.Write(bytes)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		var num int
-// 		var empty string
-// 		num2 := 1
-// 		array := make([]byte, num2)
-// 		for {
-// 			flag := true
-// 			num, err = obj.clientStream.Read(array)
-// 			if err != nil {
-// 				return "", err
-// 			}
-// 			empty = string(array)
-// 			strBuilder.WriteString(empty)
-// 			if empty == requestEndChar {
-// 				break
-// 			}
-// 		}
-// 		return strBuilder.String(), nil
-// 	}
-// 	return "", fmt.Errorf("HSM is not connected")
-// }

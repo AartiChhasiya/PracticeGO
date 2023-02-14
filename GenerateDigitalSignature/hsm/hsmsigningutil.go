@@ -27,19 +27,31 @@ type HSMSigningResult struct {
 	CHCommand    string
 }
 
-func GenerateSignature() {
-	// inputMessage := `{"paymentReturnInstruction": {"TransactionId": "ae07582a-88f1-4f5f-8d1a-a564ae933e68","ReasonForReturn": ""}}`
-	// inputMessage := `{"MachineName":"CON-IND-09","UserName":"sapan.patibandha","Timestamp":"2018-10-17T11:12:05.4212206+05:30"}`
+type HSMSigning struct {
+	primaryHSMIP   uint32
+	secondaryHSMIP uint32
+	tcpPort        int
+}
 
-	inputMessage := "Hello World!"
+func NewHSMSigningWithPort(primaryHSMLongIP uint32, secondaryHSMLongIP uint32, port int) *HSMSigning {
+	var h HSMSigning
+	h.primaryHSMIP = primaryHSMLongIP
+	h.secondaryHSMIP = secondaryHSMLongIP
+	h.tcpPort = port
+
+	fmt.Printf("Primary IP is: %d Secondary IP is: %d Port is: %d \n", h.primaryHSMIP, h.secondaryHSMIP, h.tcpPort)
+	return &h
+}
+
+func (h *HSMSigning) GenerateSignature(inputMessage string) {
 	hashOfInputData := hex.EncodeToString([]byte(inputMessage))
 	fmt.Println("SignData is", hashOfInputData)
 
 	var signKeyIndex int16 = 23
-	connectClient()
+	h.connectClient()
 
-	HSMSignature := generateSign(hashOfInputData, signKeyIndex, SHA256)
-	fmt.Println("HSMSignature is:", HSMSignature)
+	HSMSignature := h.generateSign(hashOfInputData, signKeyIndex, SHA256)
+	// fmt.Println("HSMSignature is:", HSMSignature)
 
 	body, err := hex.DecodeString(HSMSignature)
 	if err != nil {
@@ -51,7 +63,7 @@ func GenerateSignature() {
 	fmt.Println("Digital Signature is: ", signature)
 }
 
-func generateSign(hexString string, signingKeyIndex int16, algorithm int) string {
+func (h *HSMSigning) generateSign(hexString string, signingKeyIndex int16, algorithm int) string {
 	signedData := ""
 	chCommand := ""
 
@@ -66,7 +78,7 @@ func generateSign(hexString string, signingKeyIndex int16, algorithm int) string
 			isContinue = true
 		}
 
-		objResult = getSignData(
+		objResult = h.getSignData(
 			hexChunkList[i],
 			signingKeyIndex,
 			isContinue,
@@ -109,7 +121,7 @@ func split(str string, chunkSize int) []string {
 	return listArray
 }
 
-func getSignData(hexData string, privateKeyIndex int16, isContinue bool, algorithm int, sChcommand string) HSMSigningResult {
+func (h *HSMSigning) getSignData(hexData string, privateKeyIndex int16, isContinue bool, algorithm int, sChcommand string) HSMSigningResult {
 	var objResult HSMSigningResult
 	objResult.IsSuccess = false
 
@@ -135,7 +147,7 @@ func getSignData(hexData string, privateKeyIndex int16, isContinue bool, algorit
 	}
 
 	var endChar string = "]"
-	response := executeExcrypt(cmd, endChar, !isContinue)
+	response := h.executeExcrypt(cmd, endChar, !isContinue)
 	functionID := ""
 
 	response = response[1 : len(response)-1]
@@ -177,14 +189,10 @@ func getSignData(hexData string, privateKeyIndex int16, isContinue bool, algorit
 	return objResult
 }
 
-func connectClient() {
-	var hsmPrimaryIP uint32 = 3232272392
-	var hsmSecondaryIP uint32 = 3232272392
-	var hsmPort int = 9000
-
+func (h *HSMSigning) connectClient() {
 	// fmt.Println("IP address is:", hsmPrimaryIP)
 
-	hsmClient.NewHSMConnectWithPort(hsmPrimaryIP, hsmSecondaryIP, hsmPort)
+	hsmClient.NewHSMConnectWithPort(h.primaryHSMIP, h.secondaryHSMIP, h.tcpPort)
 
 	//Connect to HSM
 	err := hsmClient.Connect()
@@ -195,10 +203,10 @@ func connectClient() {
 	}
 }
 
-func executeExcrypt(request, endChar string, endConnection bool) string {
+func (h *HSMSigning) executeExcrypt(request, endChar string, endConnection bool) string {
 	// now := time.Now()
 	if !hsmClient.IsConnected() {
-		connectClient()
+		h.connectClient()
 		if !hsmClient.IsConnected() {
 			return fmt.Sprintf("unable to Connect Primary %s and Secondary HSM %s", hsmClient.PrimaryHSMIP(), hsmClient.SecondaryHSMIP())
 		}
