@@ -22,36 +22,36 @@ OR
 $ aws --endpoint-url=http://localhost:4566 --profile aws-admin sqs list-queues --region=us-west-2
 
 ## 4. Create AWS SNS topic
-aws --endpoint-url=http://localhost:4566 sns create-topic --region=us-west-2 --name test-topi
+$ aws --endpoint-url=http://localhost:4566 sns create-topic --region=us-west-2 --name test-topi
 ============>Response from localstack
 {
     "TopicArn": "arn:aws:sns:us-west-2:000000000000:test-topi"
 }
 
 ## 5. List Topics
-aws --endpoint-url=http://localhost:4566 sns list-topics --region=us-west-2
+$ aws --endpoint-url=http://localhost:4566 sns list-topics --region=us-west-2
 
 ## 6. Subscribe to SNS topic
-aws --endpoint-url=http://localhost:4566 sns subscribe --topic-arn arn:aws:sns:us-west-2:000000000000:test-topi --protocol email --notification-endpoint aartiparmar112@gmail.com
+$ aws --endpoint-url=http://localhost:4566 sns subscribe --topic-arn arn:aws:sns:us-west-2:000000000000:test-topi --protocol email --notification-endpoint aartiparmar@gmail.com
 =================>Response from localstack
 {
     "SubscriptionArn": "arn:aws:sns:us-west-2:000000000000:test-topi:a03bbf53-5198-41e4-a104-ec1e587040a5"
 }
 
 ## 7. Publish message to SNS
-aws --endpoint-url=http://localhost:4566 sns publish --topic-arn arn:aws:sns:us-west-2:000000000000:test-topi --message "Hello from localStack - Aarti Chhasiya"
+$ aws --endpoint-url=http://localhost:4566 sns publish --topic-arn arn:aws:sns:us-west-2:000000000000:test-topi --message "Hello from localStack - Aarti Chhasiya"
 
 ## 8.Set SNS Subscription attributes, using the SubscriptionArn from the previous step:
-aws --endpoint-url=http://localhost:4566 sns set-subscription-attributes --subscription-arn arn:aws:sns:us-west-2:000000000000:test-topi:a03bbf53-5198-41e4-a104-ec1e587040a5 --attribute-name RawMessageDelivery --attribute-value true
+$ aws --endpoint-url=http://localhost:4566 sns set-subscription-attributes --subscription-arn arn:aws:sns:us-west-2:000000000000:test-topi:a03bbf53-5198-41e4-a104-ec1e587040a5 --attribute-name RawMessageDelivery --attribute-value true
 
 ## 9. List subcriptions
-aws --endpoint-url=http://localhost:4566 sns list-subscriptions
+$ aws --endpoint-url=http://localhost:4566 sns list-subscriptions
 
 ## 10. Unsubscribe from SNS topic:
 $ aws --endpoint-url=http://localhost:4566 sns unsubscribe --subscription-arn arn:aws:sns:us-west-2:000000000000:test-topi:a03bbf53-5198-41e4-a104-ec1e587040a5
 
 ## 11. Delete an SNS topic:
-aws --endpoint-url=http://localhost:4566 sns delete-topic --topic-arn "arn:aws:sns:us-west-2:000000000000:test-topi"
+$ aws --endpoint-url=http://localhost:4566 sns delete-topic --topic-arn "arn:aws:sns:us-west-2:000000000000:test-topi"
 
 ### You can refer below links for reference
 1. https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-completion.html
