@@ -1,15 +1,16 @@
 # Configure localstack to mock AWS services on your local machine
 ### Here, I've provided an example of creating SNS and subscribe it using localstack CLI.
+### You can use any CLI to run these commands
 
 ## 1. Install localStack
-docker run -it -d -p 4566:4566 -p 4510-4559:4510-4559 --name aws_localstack localstack/localstack
+$ docker run -it -d -p 4566:4566 -p 4510-4559:4510-4559 --name aws_localstack localstack/localstack
 
 ## 2. List all queues
-aws --endpoint-url=http://localhost:4566 sqs list-queues --region=us-west-2
+$ aws --endpoint-url=http://localhost:4566 sqs list-queues --region=us-west-2
 ##### Error: Unable to locate credentials. You can configure credentials by running "aws configure".
  
 ## 3. Configure your profile for localStack
-aws configure
+$ aws configure
 AWS Access Key ID [None]: test
 AWS Secret Access Key [None]: test
 Default region name [None]: us-west-2
@@ -18,7 +19,7 @@ Default output format [None]: json
 OR
 
 ## 3. Login with Admin user
-aws --endpoint-url=http://localhost:4566 --profile aws-admin sqs list-queues --region=us-west-2
+$ aws --endpoint-url=http://localhost:4566 --profile aws-admin sqs list-queues --region=us-west-2
 
 ## 4. Create AWS SNS topic
 aws --endpoint-url=http://localhost:4566 sns create-topic --region=us-west-2 --name test-topi
@@ -45,6 +46,12 @@ aws --endpoint-url=http://localhost:4566 sns set-subscription-attributes --subsc
 
 ## 9. List subcriptions
 aws --endpoint-url=http://localhost:4566 sns list-subscriptions
+
+## 10. Unsubscribe from SNS topic:
+$ aws --endpoint-url=http://localhost:4566 sns unsubscribe --subscription-arn arn:aws:sns:us-west-2:000000000000:test-topi:a03bbf53-5198-41e4-a104-ec1e587040a5
+
+## 11. Delete an SNS topic:
+aws --endpoint-url=http://localhost:4566 sns delete-topic --topic-arn "arn:aws:sns:us-west-2:000000000000:test-topi"
 
 ### You can refer below links for reference
 1. https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-completion.html
