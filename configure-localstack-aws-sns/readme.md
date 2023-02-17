@@ -23,6 +23,7 @@ $ aws --endpoint-url=http://localhost:4566 --profile aws-admin sqs list-queues -
 
 ## 4. Create AWS SNS topic
 $ aws --endpoint-url=http://localhost:4566 sns create-topic --region=us-west-2 --name test-topi
+
 ============>Response from localstack
 {
     "TopicArn": "arn:aws:sns:us-west-2:000000000000:test-topi"
@@ -33,6 +34,7 @@ $ aws --endpoint-url=http://localhost:4566 sns list-topics --region=us-west-2
 
 ## 6. Subscribe to SNS topic
 $ aws --endpoint-url=http://localhost:4566 sns subscribe --topic-arn arn:aws:sns:us-west-2:000000000000:test-topi --protocol email --notification-endpoint aartiparmar@gmail.com
+
 =================>Response from localstack
 {
     "SubscriptionArn": "arn:aws:sns:us-west-2:000000000000:test-topi:a03bbf53-5198-41e4-a104-ec1e587040a5"
