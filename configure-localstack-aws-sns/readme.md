@@ -6,7 +6,7 @@ docker run -it -d -p 4566:4566 -p 4510-4559:4510-4559 --name aws_localstack loca
 
 ## 2. List all queues
 aws --endpoint-url=http://localhost:4566 sqs list-queues --region=us-west-2
-##### Error Unable to locate credentials. You can configure credentials by running "aws configure".
+##### Error: Unable to locate credentials. You can configure credentials by running "aws configure".
  
 ## 3. Configure your profile for localStack
 aws configure
