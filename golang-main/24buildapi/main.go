@@ -25,7 +25,7 @@ type Author struct {
 	Website  string `json:"website"`
 }
 
-//fake DB
+// fake DB
 var courses []Course
 
 // middleware, helper - file
